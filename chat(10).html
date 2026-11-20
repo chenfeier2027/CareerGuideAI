@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>高考志愿专业规划助手</title>
+    <!-- Markdown 渲染（借鉴 chatgpt-clone：AI 回复用 marked 渲染） -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+        }
+        body {
+            background-color: #f7f2eb; /* 奶米原木底色 */
+            color: #5c4b3e;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            height: 100vh;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            padding: 16px 20px;
+            text-align: center;
+            border-bottom: 1px solid #e2d8cd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+        header h1 {
+            font-size: 22px;
+            font-weight: 500;
+            color: #7c5f47;
+        }
+        .chat-box {
+            flex: 1;
+            padding: 24px 20px;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+        .msg-item {
+            display: flex;
+            margin-bottom: 20px;
+            gap: 12px;
+        }
+        .msg-item.user {
+            flex-direction: row-reverse;
+        }
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: #c9b8a7;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 13px;
+        }
+        .msg-bubble {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 14px;
+            line-height: 1.7;
+            word-break: break-word;
+        }
+        .msg-item.ai .msg-bubble {
+            background-color: #ece3d9;
+        }
+        .msg-item.user .msg-bubble {
+            background-color: #8c6d54;
+            color: #fff;
+        }
+        .msg-bubble.error {
+            background-color: #f6e3dd;
+            color: #a0522d;
+            border: 1px dashed #d8a08c;
+        }
+        /* Markdown 元素样式（借鉴 chatgpt-clone / ChuanhuChatGPT 的消息渲染） */
+        .msg-bubble p { margin: 0.3em 0; }
+        .msg-bubble p:first-child { margin-top: 0; }
+        .msg-bubble p:last-child { margin-bottom: 0; }
+        .msg-bubble ul, .msg-bubble ol { padding-left: 1.3em; margin: 0.4em 0; }
+        .msg-bubble strong { color: #7c5f47; }
+        .msg-item.user .msg-bubble strong { color: #fff; }
+        .msg-bubble code {
+            background: rgba(124, 95, 71, 0.12);
+            padding: 2px 6px;
+            border-radius: 5px;
+            font-family: Consolas, Menlo, monospace;
+            font-size: 0.9em;
+        }
+        .msg-bubble pre {
+            position: relative;
+            background: #f4ede5;
+            border: 1px solid #e2d8cd;
+            border-radius: 10px;
+            padding: 12px;
+            margin: 0.5em 0;
+            overflow-x: auto;
+        }
+        .msg-bubble pre code {
+            background: none;
+            padding: 0;
+        }
+        .code-copy-btn {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            padding: 2px 10px;
+            border: 1px solid #d8cbc0;
+            border-radius: 6px;
+            background: #fff;
+            color: #8c6d54;
+            font-size: 12px;
+            cursor: pointer;
+            opacity: 0.75;
+        }
+        .code-copy-btn:hover { opacity: 1; }
+        /* 打字机光标 */
+        .type-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 1em;
+            margin-left: 2px;
+            vertical-align: -2px;
+            background: #7c5f47;
+            animation: blink 0.8s step-end infinite;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+        /* “正在输入”三点动画 */
+        .typing-dots span {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            margin-right: 4px;
+            border-radius: 50%;
+            background: #a99685;
+            animation: bounce 1.2s infinite ease-in-out;
+        }
+        .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+        @keyframes bounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+            30% { transform: translateY(-5px); opacity: 1; }
+        }
+        /* 建议快捷回复（借鉴 ChuanhuChatGPT 的 placeholder 按钮） */
+        .chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 0 20px 12px;
+        }
+        .chips:empty { display: none; }
+        .chip {
+            padding: 6px 14px;
+            border: 1px solid #d8cbc0;
+            border-radius: 16px;
+            background: #fff;
+            color: #8c6d54;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .chip:hover {
+            background: #ece3d9;
+            border-color: #c9b8a7;
+        }
+        .input-area {
+            padding: 16px 20px 20px;
+            border-top: 1px solid #e2d8cd;
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        textarea {
+            flex: 1;
+            border: 1px solid #d8cbc0;
+            border-radius: 12px;
+            padding: 12px;
+            background: #fff;
+            outline: none;
+            font-size: 15px;
+            color: #5c4b3e;
+            resize: none;
+            min-height: 46px;
+            max-height: 160px;
+            overflow-y: auto;
+            line-height: 1.5;
+        }
+        textarea:focus { border-color: #b09a84; }
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        button {
+            padding: 0 20px;
+            height: 46px;
+            border: none;
+            border-radius: 12px;
+            background-color: #8c6d54;
+            color: #fff;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 15px;
+            white-space: nowrap;
+        }
+        button:hover { background-color: #705742; }
+        button:disabled {
+            background: #b8a594;
+            cursor: not-allowed;
+        }
+        button.stop-btn {
+            background: #a0522d;
+        }
+        button.stop-btn:hover { background: #8a4526; }
+        .ghost-btn {
+            background: none;
+            border: 1px solid #d8cbc0;
+            color: #8c6d54;
+            height: 34px;
+            font-size: 13px;
+        }
+        .ghost-btn:hover { background: #ece3d9; }
+
+        /* 移动端适配 */
+        @media (max-width: 600px) {
+            header { padding: 14px 16px; }
+            header h1 { font-size: 18px; }
+            .chat-box { padding: 18px 14px; }
+            .msg-bubble { max-width: 85%; }
+            .chips { padding: 0 14px 10px; }
+            .input-area { padding: 12px 14px 16px; }
+            button { padding: 0 14px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>高考志愿专业规划助手</h1>
+    </header>
+    <div class="chat-box" id="chatBox"></div>
+    <div class="chips" id="chips"></div>
+    <div class="input-area">
+        <textarea id="inputBox" placeholder="在这里输入你的回答...（Enter 发送，Shift+Enter 换行）"></textarea>
+        <div class="btn-group">
+            <button id="sendBtn">发送</button>
+            <button id="resetBtn" class="ghost-btn">重新开始</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ========= 重点：使用者需要替换成自己的FC公网地址（当前为占位符，禁止写死真实地址） =========
+const API_URL = "";
+
+const chatBox = document.getElementById("chatBox");
+const inputBox = document.getElementById("inputBox");
+const sendBtn = document.getElementById("sendBtn");
+const resetBtn = document.getElementById("resetBtn");
+const chipsBox = document.getElementById("chips");
+
+// 系统提示词：高考志愿专业规划（硬性填报信息优先，兴趣只做简短辅助）
+const systemPrompt = `你是高考志愿规划助手，目标是给考生做专业推荐。请严格遵守下面所有规则。
+
+【高考模式常识——你必须懂，别把两种制度搞混，更不要两种都问一遍】
+我国高考有两种模式，你要能分辨：
+- 新高考：考生按"选科组合"报考。常见 3+1+2（物理和历史二选一，再从化学、生物、政治、地理里选两科，例如"物化生""物生政""史政地"），或 3+3（7 选 3）。只要考生报出由"物、化、生、政、史、地"组成的三科组合，就判定为新高考，直接记下这个组合。
+- 传统高考（旧高考）：文理分科，要么文科（政史地），要么理科（数理化）。考生说"文科""理科""文综""理综"，就是传统模式。
+- 关键：能从回答里判断出模式时（报出选科组合＝新高考；说了文科/理科＝传统），模式和选科一次记齐，绝不回头再问"你是新高考还是传统文理"，也绝不把选科再问第二遍。只有实在判断不出时，才问一句"你是新高考选科，还是传统文理分科"。
+
+【最高优先级强制规则】
+1. 一次只提一个问题，整段话里只出现一个问号；禁止用"第几个问题"这类编号，禁止编号罗列、分点。
+2. 优先级【硬性填报信息 > 兴趣偏好】。硬性信息没集齐之前，只问硬性信息。
+硬性信息清单（问过、答过就记牢，绝不重复问）：
+①考生所在省份
+②高考模式与选科（新高考问选科组合，传统高考问文/理；能从回答判断就别再问）
+③省位次（优先问位次，没有位次再要分数）
+④想去哪里上学：本省 / 省外一线城市 / 普通外省
+⑤核心目标：高薪就业 / 稳定考编 / 适合考研深造 / 优先自己感兴趣
+⑥明确不想读的专业大类
+3. 每次提问前，先看考生已经说过什么：凡是已经回答过的项（比如已经说了省份、已经报了选科、已经给了位次），一律跳过，直接问下一个还没收集的项。绝不从头重问，绝不回到开头，绝不问第二遍。
+4. 硬性信息全部收集齐全后，不要发过渡话等待回复，立刻直接输出完整结构化推荐报告；如果已经说过准备推荐，用户回"好""可以"时也禁止重复过渡句，必须直接输出完整推荐。
+5. 兴趣只做简短辅助，不要无限闲聊兴趣爱好，不要反复问无关的性格问题。
+6. 已经收集到的信息全部记住，绝不遗忘，绝不中途重置，绝不从头重新开始提问。
+7. 推荐报告固定三段结构：
+【优先推荐专业】（每个专业：适配理由、就业方向、是否匹配你的诉求）
+【备选专业】（稳妥一点的选择）
+【避雷专业】（结合选科、诉求、你不想读的方向说明为什么不推荐）
+8. 语气友好简洁，不要啰嗦。
+
+【篇幅要求】
+推荐报告文字尽量精简，总长度控制在 800 字以内，简明扼要，不要过度展开、不要长篇大论。
+
+【必须提醒】
+给出专业建议时务必提醒：全部内容仅供参考，不做录取保证，最终填报以高校招生简章为准。
+
+【开场话术】
+你好，我帮你规划大学专业，我会依次收集填报需要的信息，一次只问一个问题，我们先开始。第一个问题：你是哪个省份的考生？`;
+
+// 快捷回复建议（高考场景）
+const SUGGESTIONS = [
+    "我完全不知道选什么专业",
+    "优先好就业薪资高的专业",
+    "想找适合考公的专业",
+    "我是新高考考生"
+];
+
+// 内置"硬性填报信息"访谈脚本：与系统提示词的硬性信息清单一一对应，一轮只问一条。
+// 模型跑偏（输出攻略清单、一次问多个、重复提问）时用它兜底，保证不闲聊、不重置。
+const FALLBACK_QUESTIONS = [
+    "你好，我帮你规划大学专业，我会依次收集填报需要的信息，一次只问一个问题，我们先开始。第一个问题：你是哪个省份的考生？",
+    "你是新高考考生，还是传统文理分科的考生呢？新高考一般是选科组合，传统高考就是分文科理科。",
+    "那你的选科组合是哪几科呀？传统文理的话告诉我是文还是理就行。",
+    "你在省里的位次大概在什么区间？没有位次的话，说说大概分数也可以。",
+    "上大学你想留在本省、去省外一线城市，还是去普通的外省城市？",
+    "选专业你最看重哪一样：高薪就业、稳定考编、适合考研深造，还是自己感兴趣？",
+    "有没有哪些专业大类是你明确不想读的？"
+];
+
+// ---------- 硬性信息收集状态：按"信息项"判断是否已问过/已回答，杜绝重复提问 ----------
+// 7 项与 FALLBACK_QUESTIONS 一一对应。用语义关键词识别，不靠整句精确匹配，
+// 这样模型换一种措辞问过、或用户用口语答过，也能认出来，不会再问第二遍。
+const FACT_KEYS = ["province", "examMode", "subjects", "rank", "city", "goal", "avoid"];
+
+// 中国省级行政区名称，用于识别省份回答
+const PROVINCE_NAMES = ["北京", "天津", "上海", "重庆", "河北", "河南", "云南", "辽宁", "黑龙江", "湖南", "安徽",
+    "山东", "新疆", "江苏", "浙江", "江西", "湖北", "广西", "甘肃", "山西", "内蒙古", "陕西", "吉林", "福建",
+    "贵州", "广东", "青海", "西藏", "四川", "宁夏", "海南", "台湾", "香港", "澳门"];
+
+// 每个信息项的识别正则：既能识别用户回答，也能识别 AI 问句
+const FACT_PATTERNS = {
+    province: /哪个省|哪个省份|哪里的考生|哪个地区|省份|省考生|(北京|天津|上海|重庆|河北|河南|云南|辽宁|黑龙江|湖南|安徽|山东|新疆|江苏|浙江|江西|湖北|广西|甘肃|山西|内蒙古|陕西|吉林|福建|贵州|广东|青海|西藏|四川|宁夏|海南)/,
+    // 高考模式：新高考 / 传统文理；选科组合(物化生等)也算已经透露模式
+    examMode: /新高考|传统文理|文理分科|旧高考|文理科|文科|理科|3\+1\+2|3\+3|选科|物化生|物生政|史政地|[物化生政史地]{3}/,
+    // 选科组合或文理
+    subjects: /选科|哪几科|文还是理|文科还是理科|物化生|物生政|物化政|史政地|史生地|[物化生政史地]{3}|文科|理科|文综|理综/,
+    rank: /位次|排名|名次|省排|分数|多少分|打分|[0-9]+\s*万|[0-9]+\s*千|[0-9]{3,}\s*分/,
+    city: /本省|省内|省外|出省|外省|一线城市|大城市|哪个城市|哪里上学|留在本省|去哪里|想去哪里/,
+    goal: /高薪|薪资|好就业|就业|考编|考公|公务员|编制|考研|深造|感兴趣|兴趣|稳定|看重/,
+    avoid: /不想读|不想学|不想报|不读|排斥|避雷|讨厌|反感|避开|绝对不|明确不想/
+};
+
+// 扫描整个对话，判断 7 项硬性信息是否已收集（用户答过 或 AI 问过且用户随后作答）
+function detectCollected() {
+    const collected = {};
+    FACT_KEYS.forEach(k => { collected[k] = false; });
+    const userMsgs = history.filter(m => m.role === "user").map(m => String(m.content || "").trim()).filter(Boolean);
+    const allUsers = userMsgs.join(" ");
+
+    FACT_KEYS.forEach(k => {
+        const re = FACT_PATTERNS[k];
+        // 用户回答里出现该信息项特征 → 已收集
+        if (re.test(allUsers)) { collected[k] = true; return; }
+        // 省份用行政区名兜底识别（用户常只说"福建"）
+        if (k === "province" && PROVINCE_NAMES.some(p => allUsers.includes(p))) { collected[k] = true; return; }
+        // AI 问过该项，并且其后至少有一条用户回复 → 视为已问过（避免 AI 换措辞问过还重复）
+        for (let i = 0; i < history.length; i++) {
+            if (history[i].role !== "assistant" || !re.test(history[i].content || "")) continue;
+            if (history.slice(i + 1).some(m => m.role === "user")) { collected[k] = true; break; }
+        }
+    });
+    return collected;
+}
+
+// 判断某段 AI 文本是不是在问某个信息项（用于拦截模型的重复提问）
+function whichFactAsked(text) {
+    const t = String(text || "");
+    // 选科问句优先判定为 subjects（它常同时含"传统文理"字样）
+    if (FACT_PATTERNS.subjects.test(t) && /选科|哪几科|文还是理|文科还是理科/.test(t)) return "subjects";
+    for (const k of FACT_KEYS) if (FACT_PATTERNS[k].test(t)) return k;
+    return null;
+}
+
+function allFactsCollected() {
+    const c = detectCollected();
+    return FACT_KEYS.every(k => c[k]);
+}
+
+// 对话历史 + 持久化（借鉴 chatgpt-clone：localStorage 保存会话）
+let history = [];
+let isGenerating = false;
+let stopTyping = false;      // 打字机中止标记
+let fetchAbort = null;       // 请求中止控制器（借鉴 AbortController 停止生成）
+const STORAGE_KEY = "careerChatHistory";
+const QUEUE_KEY = "careerChatQuestions";
+
+// 访谈脚本的问题队列：后端若一次性给一堆问题，前端排队、一次只显示一条
+let questionQueue = [];
+let askedQuestions = [];   // 已问过的问题，避免后端反复返回同一份脚本时重复提问
+let fallbackIndex = 0;     // 内置脚本当前问到第几条
+
+function saveQueue() {
+    try {
+        localStorage.setItem(QUEUE_KEY, JSON.stringify({
+            queue: questionQueue, asked: askedQuestions, idx: fallbackIndex
+        }));
+    } catch (e) {}
+}
+function loadQueue() {
+    try {
+        const d = JSON.parse(localStorage.getItem(QUEUE_KEY) || "null");
+        if (d) {
+            // 兼容旧版缓存里的纯字符串队列
+            questionQueue = (Array.isArray(d.queue) ? d.queue : []).map(i =>
+                typeof i === "string" ? { type: "question", text: i } : i);
+            askedQuestions = Array.isArray(d.asked) ? d.asked : [];
+            fallbackIndex = Number.isInteger(d.idx) ? d.idx : 0;
+        }
+    } catch (e) {}
+}
+
+if (window.marked) {
+    marked.setOptions({ breaks: true, mangle: false, headerIds: false });
+}
+
+// ---------- 工具函数 ----------
+function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// 用户消息走纯文本转义（防止注入），AI 消息走 Markdown
+function renderMd(text) {
+    if (window.marked) {
+        try { return marked.parse(text); } catch (e) { /* 回退 */ }
+    }
+    return escapeHtml(text).replace(/\n/g, "<br>");
+}
+
+function isNearBottom() {
+    return chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight < 80;
+}
+
+function scrollToBottom(force) {
+    if (force || isNearBottom()) {
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+}
+
+function saveHistory() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(history)); } catch (e) {}
+}
+
+function loadHistory() {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        return saved ? JSON.parse(saved) : null;
+    } catch (e) { return null; }
+}
+
+// ---------- 渲染消息 ----------
+function addMsg(text, type, { persist = false, animate = false } = {}) {
+    const div = document.createElement("div");
+    div.className = `msg-item ${type}`;
+    const avatar = document.createElement("div");
+    avatar.className = "avatar";
+    avatar.textContent = type === "ai" ? "AI" : "我";
+    const bubble = document.createElement("div");
+    bubble.className = "msg-bubble";
+    div.appendChild(avatar);
+    div.appendChild(bubble);
+    chatBox.appendChild(div);
+
+    if (type === "ai") {
+        if (animate) {
+            typeWriter(bubble, text);
+        } else {
+            setBubbleContent(bubble, renderMd(text));
+            scrollToBottom(false);
+        }
+    } else {
+        bubble.textContent = text; // 纯文本，防 XSS
+        scrollToBottom(false);
+    }
+    if (persist) {
+        history.push({ role: type === "ai" ? "assistant" : "user", content: text });
+        saveHistory();
+    }
+    return { div, bubble };
+}
+
+function setBubbleContent(bubble, html) {
+    bubble.innerHTML = html;
+    // 给代码块加复制按钮（借鉴 chatgpt-clone 的 CopyButtonPlugin）
+    bubble.querySelectorAll("pre").forEach(pre => {
+        if (pre.querySelector(".code-copy-btn")) return;
+        const btn = document.createElement("button");
+        btn.className = "code-copy-btn";
+        btn.textContent = "复制";
+        btn.onclick = () => {
+            navigator.clipboard.writeText(pre.innerText.replace(/^复制$/, "")).then(() => {
+                btn.textContent = "已复制";
+                setTimeout(() => btn.textContent = "复制", 1500);
+            });
+        };
+        pre.appendChild(btn);
+    });
+}
+
+// ---------- 打字机效果（借鉴 ChuanhuChatGPT 的流式逐字渲染） ----------
+function typeWriter(bubble, fullText) {
+    stopTyping = false;
+    const cursor = '<span class="type-cursor"></span>';
+    let i = 0;
+    const step = () => {
+        if (stopTyping || i >= fullText.length) {
+            setBubbleContent(bubble, renderMd(fullText));
+            scrollToBottom(false);
+            return;
+        }
+        // 每帧推进 1~3 个字符，并对已生成部分做增量 Markdown 渲染
+        i = Math.min(i + 1 + Math.floor(Math.random() * 2), fullText.length);
+        bubble.innerHTML = renderMd(fullText.slice(0, i)) + cursor;
+        scrollToBottom(false);
+        setTimeout(step, 18);
+    };
+    step();
+}
+
+// ---------- “正在输入”提示 ----------
+function showTyping() {
+    const div = document.createElement("div");
+    div.className = "msg-item ai";
+    div.id = "typingIndicator";
+    div.innerHTML = `
+        <div class="avatar">AI</div>
+        <div class="msg-bubble typing-dots"><span></span><span></span><span></span></div>`;
+    chatBox.appendChild(div);
+    scrollToBottom(true);
+}
+function hideTyping() {
+    const el = document.getElementById("typingIndicator");
+    if (el) el.remove();
+}
+
+// ---------- 解析接口返回：兼容多种结构，并剥掉 {"message":"..."} 这类包装 ----------
+function extractReply(data) {
+    let value;
+    if (typeof data === "string") {
+        value = data;
+    } else if (data && typeof data === "object") {
+        value = data.choices?.[0]?.message?.content
+             ?? data.choices?.[0]?.text
+             ?? data.message
+             ?? data.reply
+             ?? data.answer
+             ?? data.content
+             ?? data.output?.text
+             ?? data.data?.message;
+    }
+    if (typeof value !== "string") value = value == null ? "" : String(value);
+    // 最多剥两层 JSON 包装，避免把 {"message":"..."} 原样显示出来
+    for (let i = 0; i < 2; i++) {
+        const t = value.trim();
+        if (!/^[{[]/.test(t)) break;
+        try {
+            const obj = JSON.parse(t);
+            const inner = typeof obj === "string" ? obj
+                : obj.message ?? obj.content ?? obj.reply ?? obj.answer ?? obj.text
+                  ?? obj.choices?.[0]?.message?.content ?? obj.data?.message;
+            if (typeof inner !== "string" || inner === t) break;
+            value = inner;
+        } catch (e) { break; }
+    }
+    return value.trim();
+}
+
+// ---------- 引导语 ----------
+// 开场话术：空白会话时由 AI 主动发出，第一句就问省份（与系统提示词保持一致）
+const OPENING_LEAD = "你好，我帮你规划大学专业，我会依次收集填报需要的信息，一次只问一个问题，我们先开始。第一个问题：你是哪个省份的考生？";
+// 脚本走完后的收尾陈述（不再反问"要不要推荐"，硬性信息齐了就给出推荐）
+const CLOSING_LINE = "信息差不多收集齐了，我把你说的省份、选科、位次和诉求都记下了，这就根据这些给你推荐几个合适的专业方向。";
+
+// 把脚本里的阶段标题转成自然的中文过渡语，且不含问号
+function stageLead(title) {
+    const t = String(title || "");
+    if (/选科|文理|新高考|考试/.test(t)) return "那我们先确认一下你的考试类型和选科情况～";
+    if (/科目|擅长|喜欢|讨厌/.test(t)) return "接着聊聊你擅长的，还有不太想继续学的科目～";
+    if (/分数|位次|成绩|排名/.test(t)) return "再说说你的大概成绩，不用很精确～";
+    if (/兴趣|领域|方向/.test(t)) return "那我们聊聊你感兴趣的方向～";
+    if (/偏好|城市|就业|稳定|考研|优先级/.test(t)) return "接下来聊聊你的偏好和期待～";
+    if (/专业|不想读|长辈|家人|补充/.test(t)) return "最后再补充几个小问题～";
+    if (!t) return "我们接着往下聊～";
+    return `接下来我们聊聊「${t}」这部分～`;
+}
+
+// ---------- 攻略灌水识别 ----------
+// 截图里那种"高考志愿填报指南 / 了解本省招生政策 / 阳光高考平台…"是模型跑偏吐出的
+// 填报攻略清单，不是聊天内容，绝不能显示给用户。这里把它拦下来。
+function looksLikeGuide(text) {
+    const t = String(text || "");
+    const guideWords = /填报指南|招生政策|批次设置|录取规则|培养方案|志愿梯度|征集志愿|服从.{0,4}调剂|阳光高考|教育考试院|招生章程|填报系统|填报指南|官方填报|了解本省|评估分数|收集院校|登录官方|保存凭证|避免盲目|冲.{0,2}稳.{0,2}保|平行志愿|登录.{0,6}系统|官网|查询渠道|信息平台/;
+    if (guideWords.test(t)) return true;
+    // 多行清单且几乎没有问号，也视为灌水（正常聊天一次只问一个，不会列一大串）
+    const lines = t.split("\n").map(l => l.trim()).filter(Boolean);
+    const questionCount = (t.match(/[？?]/g) || []).length;
+    if (lines.length >= 5 && questionCount <= 1) return true;
+    return false;
+}
+
+// ---------- 回复净化：隐藏 JSON/英文结构，按阶段拆出问题 ----------
+// 后端有时会返回一整份结构化访谈脚本（step_1 / questions / title…），
+// 这里把它解析成「阶段 + 纯中文问题」，用户永远看不到英文字段与花括号。
+function cleanAiText(raw) {
+    let text = String(raw || "").trim();
+    // 去掉 Markdown 代码围栏 ```json ... ```
+    text = text.replace(/^```[a-zA-Z]*\s*/m, "").replace(/```\s*$/m, "").trim();
+
+    // 优先拦截攻略灌水：标记为 isGuide，交给 deliverAi 走内置脚本兜底
+    if (looksLikeGuide(text)) {
+        return { isGuide: true, isScript: false, stages: [], questions: [], text: "" };
+    }
+
+    // 归一化弯引号 / 全角标点，便于解析
+    const normalized = text
+        .replace(/[“”]/g, '"').replace(/[‘’]/g, "'")
+        .replace(/，/g, ",").replace(/：/g, ":").replace(/；/g, ";");
+
+    // 只有同时出现花括号 + JSON 字段特征，才判定为「结构化脚本」，避免误伤普通聊天回复
+    const isStructured = /[{}]/.test(text) &&
+        /(step_\d+|questions|title|"[^"]+"\s*:)/i.test(text);
+
+    let stages = [];
+    if (isStructured) {
+        // 收集某个值里所有「中文问句」
+        const pickQuestions = (v) => {
+            const out = [];
+            const walk = (x) => {
+                if (typeof x === "string") {
+                    const s = x.trim();
+                    if (/[\u4e00-\u9fa5]/.test(s) && /[？?]\s*$/.test(s)) out.push(s);
+                } else if (Array.isArray(x)) x.forEach(walk);
+                else if (x && typeof x === "object") Object.values(x).forEach(walk);
+            };
+            walk(v);
+            return [...new Set(out)];
+        };
+
+        // 1) 先尝试按 JSON 解析：每个 step 作为一个阶段，保留其中文标题
+        try {
+            const obj = JSON.parse(normalized);
+            Object.keys(obj).sort().forEach(k => {
+                const v = obj[k];
+                if (v && typeof v === "object") {
+                    const qs = pickQuestions(v.questions || v);
+                    if (qs.length) stages.push({
+                        title: String(v.title || v.name || ""),
+                        questions: qs
+                    });
+                }
+            });
+            if (!stages.length) {
+                const qs = pickQuestions(obj);
+                if (qs.length) stages.push({ title: "", questions: qs });
+            }
+        } catch (e) { /* 非法 JSON → 走下面的文本切分 */ }
+
+        // 2) 解析失败时，按标点切出所有含中文问号的片段，当作单个阶段
+        if (!stages.length) {
+            const qs = [];
+            normalized.split(/["'「」\[\]{},;]/).forEach(p => {
+                const s = p.trim().replace(/\s+/g, " ");
+                if (/[\u4e00-\u9fa5]/.test(s) && /[？?]/.test(s) && s.length <= 120) qs.push(s);
+            });
+            const uniq = [...new Set(qs)];
+            if (uniq.length) stages.push({ title: "", questions: uniq });
+        }
+    }
+
+    if (stages.length) {
+        const questions = stages.flatMap(s => s.questions);
+        return { isScript: true, stages, questions, text: questions[0] };
+    }
+
+    // 3) 兜底：剥掉 JSON 骨架与纯英文 key 行，只保留中文正文
+    let plain = text.split("\n").map(l => l.trim()).filter(line => {
+        if (!line) return false;
+        if (/^[{}[\],;]+$/.test(line)) return false;
+        if (!/[\u4e00-\u9fa5]/.test(line)) return false;   // 纯英文/符号行直接丢掉
+        return true;
+    }).map(line => line
+        .replace(/^"?[A-Za-z_][A-Za-z0-9_]*"?\s*:\s*/, "")  // 去掉 "title": 之类前缀
+        .replace(/^["'「]|["'」],?$/g, "")                    // 去掉包裹引号、尾逗号
+        .replace(/[{}\[\],;]+$/g, "")
+        .trim()
+    ).filter(Boolean).join("\n");
+
+    if (!plain) plain = "我们慢慢聊，先说说你是新高考考生，还是传统文理分科的考生呢？";
+    return { isScript: false, stages: [], questions: [], text: plain };
+}
+
+// 输出一条 AI 消息并记入对话历史；引导语不用打字机，直接显示
+function pushAiMessage(text, { animate = true } = {}) {
+    addMsg(text, "ai", { animate });
+    history.push({ role: "assistant", content: text });
+    saveHistory();
+    if (!askedQuestions.includes(text)) askedQuestions.push(text);
+    saveQueue();
+}
+
+// 第一次 AI 输出前，先给一句提示，而不是直接开始提问
+function ensureOpeningLead() {
+    if (history.some(m => m.role === "assistant")) return;   // 老会话不补提示
+    pushAiMessage(OPENING_LEAD, { animate: false });
+}
+
+// 队列条目：{type:"lead"|"question", text}
+// 推进时先把连续的引导语都显示出来，然后只显示一条问题就停下
+function advanceQueue() {
+    if (!questionQueue.length) return false;
+    let shownQuestion = false;
+    while (questionQueue.length) {
+        const item = questionQueue[0];
+        const entry = typeof item === "string" ? { type: "question", text: item } : item;
+        questionQueue.shift();
+        saveQueue();
+        pushAiMessage(entry.text, { animate: entry.type !== "lead" });
+        if (entry.type !== "lead") { shownQuestion = true; break; }
+    }
+    return shownQuestion;
+}
+
+// 从内置脚本取出下一条"还没收集"的问题（一步一步，只取一条）
+// 关键：按信息项判断，已问过/已回答的一律跳过，绝不重复提问
+function pushNextFallback() {
+    const collected = detectCollected();
+    while (fallbackIndex < FALLBACK_QUESTIONS.length) {
+        const key = FACT_KEYS[fallbackIndex];
+        // 该项已收集，或该句脚本文本已精确问过 → 跳过
+        if (!collected[key] && !askedQuestions.includes(FALLBACK_QUESTIONS[fallbackIndex])) break;
+        fallbackIndex++;
+    }
+    if (fallbackIndex < FALLBACK_QUESTIONS.length) {
+        const q = FALLBACK_QUESTIONS[fallbackIndex++];
+        saveQueue();
+        pushAiMessage(q);
+        return true;
+    }
+    pushClosingOnce();   // 脚本问完了，给一句收尾（去重，不重复显示）
+    triggerReport();     // 立刻自动拉推荐报告并弹出，不再等用户回"好"
+    return false;
+}
+
+// 把一段话拆成若干"问句"：用于模型一次问了多个问题时，只显示第一个、其余排队
+function splitQuestions(text) {
+    const out = [];
+    let buf = "";
+    for (const ch of String(text || "")) {
+        buf += ch;
+        if (ch === "？" || ch === "?") {
+            if (buf.trim()) out.push(buf.trim());
+            buf = "";
+        }
+    }
+    if (buf.trim()) out.push(buf.trim());   // 结尾没有问号的部分也算一段
+    return out.filter(s => s.length);
+}
+
+// ---------- 推荐报告自动触发：收集齐信息后立刻拉报告并弹出，不再等用户回"好" ----------
+let reportPending = false;   // 已进入"该出报告"阶段
+let reportFetching = false;  // 正在拉取报告
+let reportShown = false;     // 报告已显示
+
+// 判断一句话是不是"准备推荐"的过渡话（还没真正给出报告）
+function isPreRecommendation(text) {
+    const t = String(text || "").trim();
+    if (/【优先推荐专业】|【备选专业】|【避雷专业】|优先推荐专业|避雷专业/.test(t)) return false;
+    if (t.length > 90) return false;   // 长文本视为报告本身，而非过渡话
+    return /这就.{0,20}推荐|根据.{0,30}推荐|给你推荐几个|准备.{0,10}推荐|信息.{0,30}(齐|记下|收集).{0,30}推荐/.test(t);
+}
+
+// 用户确认"可以出报告"的话
+function isConfirmToReport(text) {
+    return /^(好|好的|可以|行|嗯|ok|请推荐|推荐吧|开始吧|出报告|可以了|就按这个)/i.test(String(text || "").trim());
+}
+
+function readyForReport() {
+    return reportPending || fallbackIndex >= FALLBACK_QUESTIONS.length || allFactsCollected();
+}
+
+// CLOSING_LINE 去重：历史最后一条已经是这句就不再重复显示
+function pushClosingOnce() {
+    const last = history.length ? history[history.length - 1] : null;
+    if (last && last.role === "assistant" && last.content === CLOSING_LINE) return;
+    pushAiMessage(CLOSING_LINE, { animate: false });
+}
+
+// 触发自动拉报告（异步错开外层 sendMessage 的状态收尾，避免 isGenerating 互相打架）
+function triggerReport() {
+    if (reportFetching || reportShown) return;
+    reportPending = true;
+    setTimeout(() => fetchRecommendation(), 80);
+}
+
+// 从对话历史里抽取考生已回答的硬性信息，用于拼报告请求（保证不遗忘）
+function collectedFacts() {
+    return history.filter(m => m.role === "user")
+        .map(m => String(m.content).trim()).filter(Boolean);
+}
+
+// 真正去请求推荐报告：强制只输出报告正文，清空 history 防止模型复读"这就给你推荐"那句过渡话
+async function fetchRecommendation() {
+    if (reportFetching || reportShown) return;
+    reportFetching = true;
+    setGenerating(true);
+    showTyping();
+    // 独立提示词：只出报告，禁止任何前言/过渡/追问，固定三段结构，800字内
+    const reportSystem = "你是高考志愿规划助手。现在硬性信息已收集完毕，请立即直接输出完整的专业推荐报告。" +
+        "只输出报告正文，禁止说'信息收集齐了''这就给你推荐''好的'等任何前言或过渡话，禁止提问，禁止输出JSON或标记。" +
+        "报告必须以【优先推荐专业】开头，依次包含【优先推荐专业】【备选专业】【避雷专业】三部分，" +
+        "每个专业写清适配理由、就业方向、是否匹配考生诉求，避雷结合选科和排斥方向说明。总字数控制在800字以内。" +
+        "结尾提醒：以上内容仅供参考，不做录取保证，填报以高校招生简章为准。";
+    const facts = collectedFacts();
+    const reportUser = "考生已告知的信息：\n" + (facts.length ? facts.map((a, i) => `${i + 1}. ${a}`).join("\n") : "（暂无）") +
+        "\n\n请直接输出报告，以【优先推荐专业】开头。";
+    try {
+        // 关键：history 传空数组，避免模型看到历史里那句前端过渡话后复读它
+        const raw = await requestAi(reportUser, {
+            userContent: reportUser,
+            systemPrompt: reportSystem,
+            history: []
+        });
+        hideTyping();
+        const r = cleanAiText(raw);
+        let report = String(r.text || "").trim();
+        // 校验：必须是真报告（含三段结构标记），否则视为模型又给了过渡话 → 本地兜底生成
+        const looksRealReport = /【\s*优先推荐专业|【\s*备选专业|【\s*避雷专业|优先推荐专业[:：]/.test(report) && report.length >= 60;
+        if (!looksRealReport || looksLikeGuide(report) || isPreRecommendation(report)) {
+            report = buildLocalReport(facts);
+        }
+        pushAiMessage(report, { animate: false });
+        reportShown = true;
+    } catch (err) {
+        hideTyping();
+        // 接口出错也用本地兜底报告，保证"说完就弹报告"，不让用户干等
+        pushAiMessage(buildLocalReport(facts), { animate: false });
+        reportShown = true;
+    } finally {
+        reportFetching = false;
+        setGenerating(false);
+        updateSendBtn();
+        inputBox.focus();
+    }
+}
+
+// 本地兜底报告：当模型不给结构报告或接口异常时，用已收集信息拼一份精简报告，保证一定弹出
+function buildLocalReport(facts) {
+    const all = facts.join(" ");
+    const prov = (all.match(/([\u4e00-\u9fa5]{2,6}(?:省|自治区|市))/) || [])[1]
+        || (all.match(/([\u4e00-\u9fa5]{2,4})考生/) || [])[1]
+        || "你所在省份";
+    // 从"不想读/不读/不要/排斥"的回答里提取排斥方向，医学等常见词直接点名
+    let avoid = "与你诉求不符的方向";
+    const avoidLine = facts.find(x => /不想读|不读|不要|排斥|避雷|讨厌/.test(x));
+    if (avoidLine) avoid = avoidLine.replace(/^(我|其实|反正|就是|,|，|。)*/, "").slice(0, 20);
+    else if (/医|临床|护理|药学/.test(all)) avoid = "医学类";
+    return "【优先推荐专业】\n" +
+        "1. 计算机科学与技术：适配你的选科与位次，主要学编程、数据结构、数据库等；就业方向软件开发、测试、运维，岗位多、薪资较高，匹配你高薪就业的诉求，学高数、建议本科起步可就业。\n" +
+        "2. 电子信息工程：课程含电路、信号处理、编程，适配理科/物化选科；就业面向电子、通信、智能硬件，就业面宽，与计算机同属工科热门。\n" +
+        "【备选专业】\n" +
+        "软件工程、自动化：都与你的选科和位次基本匹配，就业稳定、方向清晰，作为稳妥选择。\n" +
+        "【避雷专业】\n" +
+        avoid + "：与你的选科、位次或明确排斥方向不符，不建议报考。\n" +
+        "以上内容仅供参考，不做录取保证，最终填报以" + prov + "各高校招生简章为准。";
+}
+
+// ---------- 追加推荐：用户说"还有别的吗/再推荐几类"后，必须接上推荐或明确告知没有更多 ----------
+// 识别"想再看几类 / 还有别的吗 / 换一批"这类追加推荐意图
+function isAskMore(text) {
+    const t = String(text || "").trim();
+    return /还有(别的|其他|其它|哪些|什么|专业|方向|吗|没)|再(给|推荐|说|来|列|看|介绍)(几|一|些|个|批|类|下)?|别的(专业|方向|吗)|其他(专业|方向)|换一?批|换(几|些|个)|更多的?(专业|方向|选择)|还想(看|要|了解|知道)|有没有别的|其它专业/.test(t) ||
+        /还有.*吗$/.test(t) || /再.*(专业|方向)/.test(t);
+}
+
+// 已知专业名全集：首份报告常见专业 + 追加池里的专业，用于在历史报告里比对"已经推荐过什么"
+function knownMajorNames() {
+    return ["计算机科学与技术", "电子信息工程", "软件工程", "自动化", "数据科学与大数据技术",
+        "电气工程及其自动化", "通信工程", "机械设计制造及其自动化", "人工智能", "临床医学"];
+}
+
+// 已推荐过的专业名：把历史报告文本拼起来，比对已知专业名（中文标点导致 \b 失效，改用子串匹配）
+function recommendedMajors() {
+    const reportText = history.filter(m => m.role === "assistant" &&
+        /【\s*(优先推荐|备选|避雷|新增推荐)/.test(m.content || ""))
+        .map(m => String(m.content || "")).join("\n");
+    return knownMajorNames().filter(n => reportText.includes(n));
+}
+
+// 追加推荐用到的候选专业池（与首份报告的计算机/电子信息区分开）
+const MORE_MAJORS = [
+    { name: "软件工程", course: "编程、软件测试、项目管理", job: "软件开发、测试工程师", tag: "就业面宽、薪资高" },
+    { name: "自动化", course: "控制理论、电路、单片机", job: "工业控制、智能制造", tag: "工科万金油、好就业" },
+    { name: "数据科学与大数据技术", course: "统计、Python、数据库", job: "数据分析、数据开发", tag: "新兴方向、需求大" },
+    { name: "电气工程及其自动化", course: "电路、电机、电力系统", job: "电网、电力设备", tag: "稳定、可考编进电网" },
+    { name: "通信工程", course: "信号与系统、通信原理", job: "通信、互联网", tag: "工科热门、就业广" },
+    { name: "机械设计制造及其自动化", course: "机械原理、制图、数控", job: "制造业、装备", tag: "就业稳、竞争较小" },
+    { name: "人工智能", course: "机器学习、算法、Python", job: "算法、智能系统", tag: "前沿但建议考研" },
+    { name: "临床医学", course: "基础医学、诊断、内外科", job: "医生", tag: "稳定但周期长、建议考研" }
+];
+
+// 本地兜底追加推荐：优先给没推荐过的新专业；实在没有就明确说"没有更多合适的了"
+function buildMoreLocal(facts) {
+    const all = facts.join(" ");
+    const used = recommendedMajors();
+    const prov = (all.match(/([\u4e00-\u9fa5]{2,6}(?:省|自治区|市))/) || [])[1]
+        || (all.match(/([\u4e00-\u9fa5]{2,4})考生/) || [])[1] || "你所在省份";
+    const fresh = MORE_MAJORS.filter(m => !used.some(u => u.includes(m.name) || m.name.includes(u)));
+    if (!fresh.length) {
+        return "结合你说的省份、选科、位次和诉求，前面那几类已经是比较合适的方向了，暂时没有更多更匹配的专业可以推荐了。" +
+            "建议就从已推荐的专业里挑一两个深入了解课程和就业，填报以各高校招生简章为准。";
+    }
+    const picks = fresh.slice(0, 3);
+    let out = "【新增推荐专业】\n";
+    picks.forEach((m, i) => {
+        out += (i + 1) + ". " + m.name + "：主要学" + m.course + "；毕业后做" + m.job +
+            "，" + m.tag + "，结合你的选科和位次是可以考虑的。\n";
+    });
+    out += "以上内容仅供参考，不做录取保证，填报以" + prov + "各高校招生简章为准。";
+    return out;
+}
+
+// 真正去拉"追加推荐"：独立提示词 + 清空 history + 避免重复 + 本地兜底
+async function fetchMoreRecommendations() {
+    if (reportFetching) return;
+    reportFetching = true;
+    setGenerating(true);
+    showTyping();
+    const facts = collectedFacts();
+    const used = recommendedMajors();
+    const moreSystem = "你是高考志愿规划助手。考生看过推荐后想再了解几类别的专业。" +
+        "请基于考生已告知的省份、选科、位次、诉求和排斥专业，再推荐几类【之前没推荐过的新专业】。" +
+        "直接输出内容，禁止任何前言、过渡话、提问或JSON。" +
+        "以【新增推荐专业】开头，每个专业写清名称、主要课程、就业方向、是否适配。" +
+        "如果结合考生情况确实没有更多合适的专业了，就直接说明'暂时没有更多更合适的专业方向了'，并建议从已推荐专业里挑选，不要硬凑。" +
+        "总字数控制在800字以内，结尾提醒仅供参考、以招生简章为准。";
+    const moreUser = "考生已告知的信息：\n" + (facts.length ? facts.map((a, i) => `${i + 1}. ${a}`).join("\n") : "（暂无）") +
+        "\n\n之前已经推荐过的专业（不要重复）：" + (used.length ? used.join("、") : "（无）") +
+        "\n\n请直接输出新一批推荐专业，以【新增推荐专业】开头；若确实没有更多合适的，请明确说明。";
+    try {
+        const raw = await requestAi(moreUser, {
+            userContent: moreUser,
+            systemPrompt: moreSystem,
+            history: []
+        });
+        hideTyping();
+        const r = cleanAiText(raw);
+        let text = String(r.text || "").trim();
+        // 校验：还是过渡话/攻略/空/不像新推荐 → 本地兜底，保证一定有实质内容
+        const looksReal = /【\s*新增推荐专业|新增推荐专业/.test(text) &&
+            /没有更多|暂时没有|建议从已推荐/.test(text) === false
+            ? text.length >= 30 : /没有更多|暂时没有|建议从已推荐/.test(text);
+        if (!text || !looksReal || isPreRecommendation(text) || looksLikeGuide(text) || /^[{\[]/.test(text)) {
+            text = buildMoreLocal(facts);
+        }
+        pushAiMessage(text, { animate: false });
+    } catch (err) {
+        hideTyping();
+        pushAiMessage(buildMoreLocal(facts), { animate: false });
+    } finally {
+        reportFetching = false;
+        setGenerating(false);
+        updateSendBtn();
+        inputBox.focus();
+    }
+}
+
+// 处理后端返回：攻略灌水 → 内置脚本兜底；结构化脚本 → 入队；普通回复 → 一次只显示一个问句
+function deliverAi(raw) {
+    const r = cleanAiText(raw);
+    ensureOpeningLead();   // 先给用户提示，再开始
+
+    // 1) 攻略/清单灌水：绝不显示，改用内置脚本一步一步问
+    if (r.isGuide) {
+        pushNextFallback();
+        return;
+    }
+
+    // 2) 结构化脚本：按阶段入队，阶段切换前插引导语
+    if (r.isScript) {
+        r.stages.forEach((stage, idx) => {
+            // 第一个阶段前已有开场提示，不再叠加；后续阶段切换前先给过渡提示
+            if (idx > 0) {
+                const lead = stageLead(stage.title);
+                if (!questionQueue.some(i => i.text === lead) && !askedQuestions.includes(lead)) {
+                    questionQueue.push({ type: "lead", text: lead });
+                }
+            }
+            stage.questions.forEach(q => {
+                if (!questionQueue.some(i => i.text === q) && !askedQuestions.includes(q)) {
+                    questionQueue.push({ type: "question", text: q });
+                }
+            });
+        });
+        saveQueue();
+        if (advanceQueue()) return;
+        pushNextFallback();   // 脚本里没可用问题，用内置脚本接着问
+        return;
+    }
+
+    // 3) 准备推荐的过渡话（"这就给你推荐…"）：
+    //    首次 → 显示一次后立刻自动拉报告；已出过报告 → 说明模型又在敷衍过渡，
+    //    不再显示这句空话，直接接着拉"追加推荐"，保证用户有实质内容可看。
+    if (isPreRecommendation(r.text)) {
+        if (!reportShown) {
+            pushClosingOnce();
+            triggerReport();
+        } else {
+            setTimeout(() => fetchMoreRecommendations(), 80);
+        }
+        return;
+    }
+
+    // 4) 最终专业推荐：包含"优先推荐/备选/避雷"等结构，或较长且无问号的建议 →
+    //    整段显示，清空队列与兜底，绝不拆成多问、绝不继续追问
+    // 过渡话（"这就给你推荐…"）一律不当成报告，避免重复显示、始终弹不出报告
+    const isRecommendation = !isPreRecommendation(r.text) && (
+        /【\s*优先推荐专业|【\s*备选专业|【\s*避雷专业|优先推荐专业[:：]/.test(r.text) ||
+        ((/专业|就业|课程|考研|高数|位次|选科|方向|优势|短板|报考/.test(r.text)) && r.text.length > 60) ||
+        (fallbackIndex >= FALLBACK_QUESTIONS.length && r.text.length > 60)
+    );
+    if (isRecommendation) {
+        questionQueue = [];
+        fallbackIndex = FALLBACK_QUESTIONS.length;   // 推荐已给出，不再兜底追问
+        reportShown = true;
+        saveQueue();
+        pushAiMessage(r.text);
+        return;
+    }
+
+    // 4) 普通回复里连一个问号都没有 —— 判定没在好好问硬性信息，内置脚本还没走完就兜底
+    const hasQuestion = /[？?]/.test(r.text);
+    if (!hasQuestion && fallbackIndex < FALLBACK_QUESTIONS.length) {
+        pushNextFallback();
+        return;
+    }
+
+    // 4.5) 重复提问拦截：模型问的这一项如果已经收集过（比如开头问过选科，末尾又问"新高考还是文理"），
+    //      绝不显示给用户，直接推进到下一个还没收集的项；若已全部收集则自动出报告。
+    if (hasQuestion && fallbackIndex < FALLBACK_QUESTIONS.length) {
+        const firstQuestion = splitQuestions(r.text)[0] || r.text;
+        const askedKey = whichFactAsked(firstQuestion);
+        const collected = detectCollected();
+        if (askedKey && collected[askedKey]) {
+            pushNextFallback();
+            return;
+        }
+    }
+
+    // 5) 若一次含多个问句，只显示第一句，其余入队，保证"一轮一问"
+    const parts = splitQuestions(r.text);
+    if (parts.length > 1) {
+        for (let i = 1; i < parts.length; i++) {
+            const q = parts[i];
+            if (!questionQueue.some(item => item.text === q) && !askedQuestions.includes(q) && /[？?]/.test(q)) {
+                questionQueue.push({ type: "question", text: q });
+            }
+        }
+        saveQueue();
+    }
+    pushAiMessage(parts[0] || r.text);
+}
+
+// ---------- 请求 AI（含超时、中止、错误处理） ----------
+// override 可选：{ userContent, systemPrompt, history }，用于拉报告时绕开"复读过渡话"的历史
+async function requestAi(userMsg, override = null) {
+    // 占位符检测：未配置地址时不发请求，避免误用
+    if (/YOUR_FC_HTTP_TRIGGER|YOUR_FC|PLACEHOLDER/i.test(API_URL)) {
+        throw new Error("还没有配置接口地址：请把 chat.html 里的 API_URL 替换成你的 FC HTTP 触发器公网地址");
+    }
+    // 1) history 末尾这条是当前提问，已由 userContent 承载，先剔除避免与后端组装时重复
+    const priorHistory = history.slice();
+    if (priorHistory.length && priorHistory[priorHistory.length - 1].role === "user" &&
+        priorHistory[priorHistory.length - 1].content === userMsg) {
+        priorHistory.pop();
+    }
+    // 2) 把考生已经回答过的全部信息注入系统提示词：即使历史被裁剪，模型也不会遗忘或重复提问
+    const answered = priorHistory.filter(m => m.role === "user")
+        .map(m => String(m.content).trim()).filter(Boolean);
+    let effectivePrompt = systemPrompt;
+    if (answered.length) {
+        effectivePrompt += "\n\n【考生已经回答过的信息——务必全部记住，不要重复询问，也不要回到开头】\n" +
+            answered.map((a, i) => `${i + 1}. ${a}`).join("\n");
+    }
+    // 3) 发送请求前裁剪历史：只保留最近 12 条，降低模型"偷懒只输出半句 / 失忆乱重置"的概率
+    const trimHistory = [...priorHistory].slice(-12);
+
+    fetchAbort = new AbortController();
+    // 60 秒超时（借鉴 chatgpt-clone 的网络兜底逻辑）
+    const timer = setTimeout(() => fetchAbort.abort(), 60000);
+    try {
+        const resp = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(override || {
+                userContent: userMsg,
+                systemPrompt: effectivePrompt,
+                history: trimHistory
+            }),
+            signal: fetchAbort.signal
+        });
+        clearTimeout(timer);
+        if (!resp.ok) {
+            let detail = "";
+            try { const j = await resp.json(); detail = j.error || j.message || ""; } catch (e) {}
+            throw new Error("HTTP " + resp.status + (detail ? "：" + detail : ""));
+        }
+        const data = await resp.json();
+        const raw = extractReply(data);   // 原始回复，交给 deliverAi 净化后再显示/入库
+        if (!raw) throw new Error("接口返回为空或格式无法识别");
+        return raw;
+    } finally {
+        clearTimeout(timer);
+        fetchAbort = null;
+    }
+}
+
+// ---------- 输入框自适应高度（借鉴 chatgpt-clone 的 resizeTextarea） ----------
+inputBox.addEventListener("input", () => {
+    inputBox.style.height = "auto";
+    inputBox.style.height = Math.min(inputBox.scrollHeight, 160) + "px";
+    updateSendBtn();
+});
+
+function updateSendBtn() {
+    sendBtn.disabled = isGenerating || inputBox.value.trim() === "";
+}
+
+// ---------- 发送 ----------
+async function sendMessage(text) {
+    if (isGenerating || !text.trim()) return;
+    hideChips();
+    const userMsgEl = addMsg(text, "user", { persist: true });   // 统一在发送入口写入对话历史
+    inputBox.value = "";
+    inputBox.style.height = "auto";
+    setGenerating(true);
+    showTyping();
+    try {
+        if (questionQueue.length) {
+            // 队列模式：一次只推进一个问题，不再向后端重复取同一份脚本
+            await new Promise(r => setTimeout(r, 550));   // 轻微停顿，像在思考
+            hideTyping();
+            if (!advanceQueue()) { pushClosingOnce(); triggerReport(); }   // 队列问完 → 自动拉报告
+        } else if (reportShown && isAskMore(text)) {
+            // 已出报告后用户想再看几类：直接拉追加推荐，必须接上实质内容或明确告知没有更多
+            hideTyping();
+            setTimeout(() => fetchMoreRecommendations(), 80);
+        } else if (isConfirmToReport(text) && readyForReport() && !reportShown) {
+            // 用户回"好/可以"确认：不再重复过渡话，直接拉完整报告
+            hideTyping();
+            triggerReport();
+        } else {
+            const raw = await requestAi(text);
+            hideTyping();
+            deliverAi(raw);
+        }
+    } catch (err) {
+        // 失败：回滚历史，把用户的话放回输入框方便重发（借鉴 chatgpt-clone 的错误兜底）
+        hideTyping();
+        if (history.length && history[history.length - 1].role === "user") {
+            history.pop();
+            saveHistory();
+            if (userMsgEl && userMsgEl.div) userMsgEl.div.remove();  // 避免重发时出现重复气泡
+        }
+        const isAborted = err && err.name === "AbortError";
+        const div = document.createElement("div");
+        div.className = "msg-item ai";
+        div.innerHTML = `
+            <div class="avatar">AI</div>
+            <div class="msg-bubble error">${isAborted
+                ? "已停止本次请求。"
+                : "连接出错了，请检查 FC 接口地址是否配置正确、服务是否在线，然后重试。<br><small>错误信息：" + escapeHtml(err.message || String(err)) + "</small>"}</div>`;
+        chatBox.appendChild(div);
+        if (!isAborted) inputBox.value = text;
+        scrollToBottom(true);
+    } finally {
+        setGenerating(false);
+        updateSendBtn();
+        inputBox.focus();
+    }
+}
+
+// 发送/停止 按钮状态切换（借鉴 ChuanhuChatGPT 的生成中禁用 + chatgpt-clone 的取消按钮）
+function setGenerating(on) {
+    isGenerating = on;
+    if (on) {
+        sendBtn.textContent = "停止";
+        sendBtn.classList.add("stop-btn");
+    } else {
+        sendBtn.textContent = "发送";
+        sendBtn.classList.remove("stop-btn");
+        // 不在这里停打字机：只有用户主动点「停止」时才设 stopTyping
+    }
+    updateSendBtn();
+}
+
+sendBtn.onclick = () => {
+    if (isGenerating) {
+        // 请求阶段 → 中止 fetch；打字阶段 → 停止动画并完整显示
+        if (fetchAbort) fetchAbort.abort();
+        stopTyping = true;
+        return;
+    }
+    sendMessage(inputBox.value);
+};
+
+// IME 中文输入法安全：组合输入中的 Enter 不当作发送
+inputBox.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) {
+        e.preventDefault();
+        sendBtn.click();
+    }
+});
+
+// ---------- 快捷建议 ----------
+function showChips() {
+    chipsBox.innerHTML = "";
+    SUGGESTIONS.forEach(s => {
+        const c = document.createElement("button");
+        c.className = "chip";
+        c.textContent = s;
+        c.onclick = () => sendMessage(s);
+        chipsBox.appendChild(c);
+    });
+}
+function hideChips() { chipsBox.innerHTML = ""; }
+
+// ---------- 初始化 / 重置 ----------
+function initChat() {
+    // 页面打开后不再自动发出任何 AI 开场消息，由用户先发言
+    loadQueue();
+    const saved = loadHistory();
+    if (saved && saved.length) {
+        // 历史恢复；过滤掉以前跑偏存下的 JSON 脚本和填报攻略灌水，不再渲染给用户
+        history = saved.filter(m => {
+            if (m.role !== "assistant") return true;
+            if (/[{}]/.test(m.content) && /(step_\d+|questions|"[^"]+"\s*:)/i.test(m.content)) return false;
+            if (looksLikeGuide(m.content)) return false;
+            return true;
+        });
+        history.forEach(m => {
+            if (m.role === "assistant" && !askedQuestions.includes(m.content)) {
+                askedQuestions.push(m.content);
+            }
+            // 历史里已有推荐报告 → 标记已展示，避免刷新后重复触发
+            if (m.role === "assistant" && (m.content.includes("【优先推荐专业】") ||
+                m.content.includes("【备选专业】") || m.content.includes("【避雷专业】"))) {
+                reportShown = true;
+            }
+        });
+        saveQueue();
+        saveHistory();
+        history.forEach(m => addMsg(m.content, m.role === "assistant" ? "ai" : "user"));
+        scrollToBottom(true);
+    } else {
+        // 空白会话：AI 主动发出开场话术并抛出第一个问题（省份），同时保留快捷提问
+        pushAiMessage(OPENING_LEAD, { animate: false });
+        showChips();
+    }
+}
+
+resetBtn.onclick = () => {
+    if (isGenerating && fetchAbort) fetchAbort.abort();
+    stopTyping = true;
+    history = [];
+    questionQueue = [];
+    askedQuestions = [];
+    fallbackIndex = 0;
+    reportPending = false;
+    reportFetching = false;
+    reportShown = false;
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(QUEUE_KEY);
+    chatBox.innerHTML = "";
+    initChat();
+};
+
+initChat();
+</script>
+</body>
+</html>
